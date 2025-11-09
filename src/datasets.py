@@ -8,7 +8,7 @@ from torchvision.transforms.functional import InterpolationMode
 
 
 class FakeClueSFTDataset(torch.utils.data.Dataset):
-    def __init__(self, data_dir, split='train', sft=True):
+    def __init__(self, data_dir, split='train', conversational=True):
         super().__init__()
         self.data_dir = os.path.join(data_dir, split)
         json_path = os.path.join(data_dir, f'data_json/{split}.json')
@@ -16,7 +16,7 @@ class FakeClueSFTDataset(torch.utils.data.Dataset):
         self.df = self.df[(self.df.cate != 'doc') & (self.df.cate != 'satellite')]
         self.df.reset_index(inplace=True, drop=True)
 
-        self.sft = sft
+        self.conversational = conversational
 
         self.user_key = 'human'
         self.assistant_key = 'gpt'
@@ -27,6 +27,7 @@ class FakeClueSFTDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         samp = self.df.loc[idx]
+        label = 'fake' if samp['label'] == 0 else 'real'
         
         img_path = os.path.join(self.data_dir, samp['image'])
         image = Image.open(img_path)
@@ -37,10 +38,11 @@ class FakeClueSFTDataset(torch.utils.data.Dataset):
         assert samp['conversations'][1]['from'] == 'gpt'
         question = 'Does the image look real/fake?'
         answer = samp['conversations'][1]['value'].strip()
-        if self.sft:
+        
+        if self.conversational:
             messages = [
                 {"role": "user", "content": [{"type": "image", "image" : image}, {"type": "text", "text": question}]},
                 {"role": "assistant", "content": [{"type": "text", "text": answer}]},
             ]
-            return messages
-        return {'image' : image, 'question' : question, 'answer' : answer}
+            return {'messages' : messages, 'images' : [image]}
+        return {'image' : image, 'question' : question, 'answer' : answer, 'label' : label}
