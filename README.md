@@ -1,20 +1,12 @@
 # OpenFakeVLM
 
 
-## Evaluation
+## Results
 
- - SwinTransformer-V2 trained on OpenFake:
-   Accuracy: 52.76%
+ - Qwen3-VL-2B-instruct (zero-shot):
+   Accuracy: 0.01775147928994083   F1: 0.020824670634259166 ROUGE-L: 0.017751479521393776
 
-    | Class        | Precision | Recall  | F1-score |
-    |--------------|-----------|---------|----------|
-    | AI-generated | 0.9511    | 0.2741  | 0.4256   |
-    | Real         | 0.4321    | 0.9751  | 0.5988   |
+ - Qwen3-VL-2B-instruct (SFT for 2 epochs):
+   Accuracy: 0.9284305438151592   F1: 0.92059266875355 ROUGE-L: 0.9284305572509766
 
- - SwinTransformer-V2 trained on OpenFake + DF40 + GenImage:
-   Accuracy: 65.73%
-
-    | Class        | Precision | Recall  | F1-score |
-    |--------------|-----------|---------|----------|
-    | AI-generated | 0.9805    | 0.4727  | 0.6379   |
-    | Real         | 0.5137    | 0.9834  | 0.6749   |
+ - 
