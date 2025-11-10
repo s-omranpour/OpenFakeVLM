@@ -131,16 +131,19 @@ def main(args):
         )
         
         FastVisionModel.for_inference(model)  # Enable inference mode
-        predictions, true_labels = [], []
+        predictions, labels = [], []
+        outputs, ground_truths = [], []
     
-        for (batch, gt) in tqdm(test_loader):
-            pr = run_batch(model, tokenizer, batch.to('cuda'))
+        for (batch, gt, ans) in tqdm(test_loader):
+            pr, raw_out = run_batch(model, tokenizer, batch.to('cuda'))
             predictions += pr
-            true_labels += gt
+            labels += gt
+            outputs += raw_out
+            ground_truths += ans
     
-        acc = accuracy_score(true_labels, predictions)
-        f1 = f1_score(true_labels, predictions, average='macro')
-        rouge_l = rouge_score(predictions, true_labels, use_stemmer=True)['rougeL_fmeasure'].item()
+        acc = accuracy_score(labels, predictions)
+        f1 = f1_score(labels, predictions, average='macro')
+        rouge_l = rouge_score(outputs, ground_truths, use_stemmer=True)['rougeL_fmeasure'].item()
         
         wandb.log({'accuracy': acc})
         wandb.log({'f1': f1})

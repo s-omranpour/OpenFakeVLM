@@ -14,14 +14,16 @@ class TestDataCollator:
     def __call__(self, batch):
         images = []
         texts = []
-        true_labels = []
+        labels = []
+        answers = []
         for sample in batch:
             images += [sample['image']]
             
             messages = [{"role": "user", "content": [{"type": "image"}, {"type": "text", "text": sample['question']}]}]
             input_text = self.tokenizer.apply_chat_template(messages, add_generation_prompt = True)
             texts += [input_text]
-            true_labels += [sample['label']]
+            labels += [sample['label']]
+            answers += [sample['answer']]
     
         inputs = self.tokenizer(
             images,
@@ -30,7 +32,7 @@ class TestDataCollator:
             padding=True,
             return_tensors = "pt",
         )
-        return inputs, true_labels
+        return inputs, labels, answers
 
 
 class FakeClueSFTDataset(torch.utils.data.Dataset):
