@@ -1,12 +1,13 @@
 # OpenFakeVLM
 
-
 ## Results
 
- - Qwen3-VL-2B-instruct (zero-shot):
-   Accuracy: 0.01775147928994083   F1: 0.020824670634259166 ROUGE-L: 0.017751479521393776
+### **Qwen3-VL-2B-instruct (Zero-shot)**
+- **Accuracy:** 0.0178  
+- **F1:** 0.0208  
+- **ROUGE-L:** 0.0178  
 
- - Qwen3-VL-2B-instruct (SFT for 2 epochs):
-   Accuracy: 0.9284305438151592   F1: 0.92059266875355 ROUGE-L: 0.9284305572509766
-
- - 
+### **Qwen3-VL-2B-instruct (SFT for 2 epochs)**
+- **Accuracy:** 0.9284  
+- **F1:** 0.9206  
+- **ROUGE-L:** 0.9284  
