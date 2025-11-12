@@ -11,7 +11,7 @@ SOLUTION_START = "<SOLUTION>"
 SOLUTION_END = "</SOLUTION>"
 
 class FakeClueChatDataset(torch.utils.data.Dataset):
-    def __init__(self, data_dir, split='train', conversational=True):
+    def __init__(self, data_dir, split='train', conversational=True, max_num_samples=None):
         super().__init__()
         self.conversational = conversational
         
@@ -20,6 +20,9 @@ class FakeClueChatDataset(torch.utils.data.Dataset):
         self.df = pd.read_json(json_path)
         self.df = self.df[(self.df.cate != 'doc') & (self.df.cate != 'satellite')]
         self.df.reset_index(inplace=True, drop=True)
+        if max_num_samples is not None:
+            self.df = self.df[:max_num_samples]
+        
         self.df['label'] = self.df['label'].apply(lambda x: 'fake' if x == 0 else 'real')
         self.df['answer'] = self.df['conversations'].apply(lambda x: x[1]['value'].strip())
         self.df['answer'] = self.df['answer'].apply(lambda x: '. '.join(x.split('. ')[1:]))

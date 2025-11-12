@@ -5,20 +5,25 @@ from PIL import Image
 import torch
 
 
+REASONING_START = "<REASONING>"
+REASONING_END = "</REASONING>"
+SOLUTION_START = "<SOLUTION>"
+SOLUTION_END = "</SOLUTION>"
+
+
 class FakeCluePromptDataset(torch.utils.data.Dataset):
-    def __init__(self, data_dir, split='train'):
+    def __init__(self, data_dir, tokenizer, split='train'):
         super().__init__()
         self.data_dir = os.path.join(data_dir, split)
         json_path = os.path.join(data_dir, f'data_json/{split}.json')
         self.df = pd.read_json(json_path)
         self.df = self.df[(self.df.cate != 'doc') & (self.df.cate != 'satellite')]
         self.df.reset_index(inplace=True, drop=True)
-
-        self.conversational = conversational
-        self.prompt_only = prompt_only
-
-        self.user_key = 'human'
-        self.assistant_key = 'gpt'
+        self.df['label'] = self.df['label'].apply(lambda x: 'fake' if x == 0 else 'real')
+        self.df['answer'] = self.df['conversations'].apply(lambda x: x[1]['value'].strip())
+        self.df['answer'] = self.df['answer'].apply(lambda x: '. '.join(x.split('. ')[1:]))
+        
+        self.tokenizer = tokenizer
 
 
     def __len__(self):
@@ -26,16 +31,14 @@ class FakeCluePromptDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         samp = self.df.loc[idx]
-        label = 'fake' if samp['label'] == 0 else 'real'
+        label = samp['label']
+        question = 'Does the image look real/fake?'
         
         img_path = os.path.join(self.data_dir, samp['image'])
         image = Image.open(img_path)
         if isinstance(image, np.ndarray):
             image = Image.fromarray(image)
-        image = image.convert("RGB")
-
-        assert samp['conversations'][1]['from'] == 'gpt'
-        question = 'Does the image look real/fake?')
+        image = image.resize((512, 512)).convert("RGB")
         
         prompt = [
             {
@@ -45,4 +48,9 @@ class FakeCluePromptDataset(torch.utils.data.Dataset):
                 ]
             }
         ]
+        prompt = self.tokenizer.apply_chat_template(
+            prompt,
+            tokenize = False,
+            add_generation_prompt = True, # Must add assistant
+        )
         return {"prompt": prompt, "image": image, "answer": label}

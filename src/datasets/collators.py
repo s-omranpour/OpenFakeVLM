@@ -10,6 +10,8 @@ class TestDataCollator:
     def __call__(self, batch):
         images = []
         texts = []
+        gt_reasons = []
+        gt_labels = []
         for sample in batch:
             images += [sample['image']]
             
@@ -23,6 +25,8 @@ class TestDataCollator:
             ]
             input_text = self.tokenizer.apply_chat_template(messages, add_generation_prompt = True)
             texts += [input_text]
+            gt_reasons += [sample['answer']]
+            gt_labels += [sample['label']]
     
         inputs = self.tokenizer(
             images,
@@ -31,4 +35,4 @@ class TestDataCollator:
             padding=True,
             return_tensors = "pt",
         )
-        return inputs
+        return inputs, gt_reasons, gt_labels

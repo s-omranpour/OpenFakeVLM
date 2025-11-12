@@ -51,3 +51,32 @@ def run_batch(
     reasons = [po[0] for po in processed_output]
     answers = [po[1] for po in processed_output]
     return reasons, answers, raw_output
+
+
+
+# Reward functions
+def formatting_reward_func(completions, **kwargs):
+    reasoning_pattern = f'{REASONING_START}(.*?){REASONING_END}'
+    answer_pattern = f'{SOLUTION_START}(.*?){SOLUTION_END}'
+
+    scores = []
+    for completion in completions:
+        score = 0
+        reasoning_matches = re.findall(reasoning_pattern, completion, re.DOTALL)
+        answer_matches = re.findall(answer_pattern, completion, re.DOTALL)
+        if len(reasoning_matches) == 1:
+            score += 1.0
+        if len(answer_matches) == 1:
+            score += 1.0
+        scores.append(score)
+    return scores
+
+
+def correctness_reward_func(completions, answer, **kwargs) -> list[float]:
+    answer_pattern = f'{SOLUTION_START}(.*?){SOLUTION_END}'
+
+    responses = [re.findall(answer_pattern, completion, re.DOTALL) for completion in completions]
+    return [
+        3.0 if len(r)==1 and a == r[0].replace('\n','') else 0.0
+        for r, a in zip(responses, answer)
+    ]
