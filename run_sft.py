@@ -43,7 +43,7 @@ def parse_args():
     # Training hyperparameters
     parser.add_argument("--batch_size", type=int, default=16,
                         help="Per-device batch size.")
-    parser.add_argument("--accumulation_steps", type=int, default=2,
+    parser.add_argument("--accumulation_steps", type=int, default=4,
                         help="Gradient accumulation steps.")
     parser.add_argument("--lr", type=float, default=2e-5,
                         help="Learning rate.")
@@ -53,13 +53,13 @@ def parse_args():
                         help="Number of training epochs.")
 
     # Logging
-    parser.add_argument("--project_name", type=str, default="OpenFakeVLM",
+    parser.add_argument("--project_name", type=str, default="OpenFakeVLM-SFT",
                         help="W&B project name for logging.")
     parser.add_argument("--log_steps", type=int, default=10,
                         help="Logging interval (in steps).")
-    parser.add_argument("--eval_steps", type=int, default=400,
+    parser.add_argument("--eval_steps", type=int, default=100,
                         help="Evaluation interval (in steps).")
-    parser.add_argument("--save_steps", type=int, default=400,
+    parser.add_argument("--save_steps", type=int, default=100,
                         help="Model saving interval (in steps).")
 
     return parser.parse_args()
@@ -74,14 +74,22 @@ def main(args):
         float32_mixed_precision = True
     )
 
+    # Initialize accelerator
+    accelerator = Accelerator()
+    device = accelerator.device
+    print('[LOG] device:', device, 'model loaded.')
+
     if args.train:
-        wandb.init(project=args.project_name, config=vars(args))
+        if accelerator.is_main_process:
+            wandb.init(project=args.project_name, config=vars(args))
+            print('[LOG] device:', device, 'wandb init.')
         
         ## Load Dataset
         dataset = FakeClueChatDataset(args.data_path, split='train', conversational=True)
         n = len(dataset)
         t = n // 10
         train_data, val_data = random_split(dataset, [n - t, t])
+        print('[LOG] device:', device, 'data loaded.')
         
         ## Trainer
         trainer = SFTTrainer(
@@ -92,7 +100,7 @@ def main(args):
             data_collator=UnslothVisionDataCollator(model, tokenizer),
     
             args=SFTConfig(
-                max_length=2048,
+                max_length=None,
                 dataloader_num_workers=4,
                 assistant_only_loss=True,
 
@@ -127,14 +135,11 @@ def main(args):
                 report_to="wandb",
             ),
         )
+        print('[LOG] device:', device, 'trainer config.')
         trainer.train()
 
     ## Evaluate
     if args.test:
-        # Initialize accelerator
-        accelerator = Accelerator()
-        device = accelerator.device
-
         FastVisionModel.for_inference(model)  # Enable inference mode
         
         test_data = FakeClueChatDataset(
