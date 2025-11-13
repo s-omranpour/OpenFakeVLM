@@ -11,9 +11,10 @@ SOLUTION_START = "<SOLUTION>"
 SOLUTION_END = "</SOLUTION>"
 
 class FakeClueChatDataset(torch.utils.data.Dataset):
-    def __init__(self, data_dir, split='train', conversational=True, max_num_samples=None):
+    def __init__(self, data_dir, split='train', conversational=True, max_image_size=512, max_num_samples=None):
         super().__init__()
         self.conversational = conversational
+        self.max_image_size = max_image_size
         
         self.data_dir = os.path.join(data_dir, split)
         json_path = os.path.join(data_dir, f'data_json/{split}.json')
@@ -41,7 +42,12 @@ class FakeClueChatDataset(torch.utils.data.Dataset):
         image = Image.open(img_path)
         if isinstance(image, np.ndarray):
             image = Image.fromarray(image)
-        image = image.convert("RGB")
+        h, w = image.size
+        m = max(h, w)
+        if m > self.max_image_size:
+            h = int(h/m * self.max_image_size)
+            w = int(w/m * self.max_image_size)
+        image = image.resize((h, w)).convert("RGB")
         
         if self.conversational:
             messages = [

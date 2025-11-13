@@ -9,6 +9,11 @@
 
 
 ### **Qwen3-VL-2B-instruct (SFT for 2 epochs)**
-- **Accuracy:** 0.9284  
-- **F1:** 0.9206  
-- **ROUGE-L:** 0.9284  
+- **Accuracy:** 92.88  
+- **F1:** 92.06  
+- **ROUGE-L:** 47.45
+
+## Todos
+ [ ] Add support for LOKI and DD-VQA datasets
+ [ ] Train and evaluate Qwen3-VL-8B
+ 

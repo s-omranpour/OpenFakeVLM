@@ -41,11 +41,11 @@ def parse_args():
     
 
     # Training hyperparameters
-    parser.add_argument("--batch_size", type=int, default=16,
+    parser.add_argument("--batch_size", type=int, default=32,
                         help="Per-device batch size.")
-    parser.add_argument("--accumulation_steps", type=int, default=4,
+    parser.add_argument("--accumulation_steps", type=int, default=1,
                         help="Gradient accumulation steps.")
-    parser.add_argument("--lr", type=float, default=2e-5,
+    parser.add_argument("--lr", type=float, default=5e-5,
                         help="Learning rate.")
     parser.add_argument("--weight_decay", type=float, default=0.01,
                         help="Weight decay for AdamW optimizer.")
@@ -113,7 +113,7 @@ def main(args):
                 optim="adamw_torch_fused",
                 weight_decay=args.weight_decay,
                 lr_scheduler_type="cosine",
-                warmup_ratio=0.03,
+                warmup_ratio=0.1,
                 num_train_epochs=args.num_epochs,
                 learning_rate=args.lr,
     
@@ -128,8 +128,7 @@ def main(args):
                 metric_for_best_model = "eval_loss", # metric we want to early stop on
                 greater_is_better = False,
     
-                # Mixed precision and gradient clipping
-                max_grad_norm=0.5,
+                # max_grad_norm=0.5,
     
                 output_dir=args.save_dir,
                 report_to="wandb",
@@ -150,7 +149,7 @@ def main(args):
         test_loader = DataLoader(
             test_data, 
             collate_fn=TestDataCollator(tokenizer), 
-            batch_size=8, num_workers=4, shuffle=False
+            batch_size=args.batch_size, num_workers=4, shuffle=False
         )
         model, test_loader = accelerator.prepare(model, test_loader)
         model = accelerator.unwrap_model(model)
