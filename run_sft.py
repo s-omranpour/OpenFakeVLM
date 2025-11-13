@@ -15,10 +15,7 @@ from src.datasets.sft_data import FakeClueChatDataset
 from src.datasets.collators import TestDataCollator
 from src.utils import run_batch
 
-from accelerate import Accelerator
-
-
-# torch.set_float32_matmul_precision('high')
+print("Available GPUs:", torch.cuda.device_count())
 
 
 def parse_args():
@@ -41,7 +38,7 @@ def parse_args():
     
 
     # Training hyperparameters
-    parser.add_argument("--batch_size", type=int, default=32,
+    parser.add_argument("--batch_size", type=int, default=64,
                         help="Per-device batch size.")
     parser.add_argument("--accumulation_steps", type=int, default=1,
                         help="Gradient accumulation steps.")
@@ -51,6 +48,9 @@ def parse_args():
                         help="Weight decay for AdamW optimizer.")
     parser.add_argument("--num_epochs", type=int, default=2,
                         help="Number of training epochs.")
+    parser.add_argument("--num_workers", type=int, default=4,
+                        help="Number of dataloader workers.")
+    
 
     # Logging
     parser.add_argument("--project_name", type=str, default="OpenFakeVLM-SFT",
@@ -66,30 +66,22 @@ def parse_args():
 
 
 def main(args):
+    ## Logger
+    wandb.init(project=args.project_name, config=vars(args))
+    
     ## Load Model
     model, tokenizer = FastVisionModel.from_pretrained(
         args.model_name_path,
-        # load_in_16bit=True,
         full_finetuning=True,
-        float32_mixed_precision = True
+        device_map='balanced'
     )
-
-    # Initialize accelerator
-    accelerator = Accelerator()
-    device = accelerator.device
-    print('[LOG] device:', device, 'model loaded.')
-
-    if args.train:
-        if accelerator.is_main_process:
-            wandb.init(project=args.project_name, config=vars(args))
-            print('[LOG] device:', device, 'wandb init.')
-        
+    
+    if args.train: 
         ## Load Dataset
         dataset = FakeClueChatDataset(args.data_path, split='train', conversational=True)
         n = len(dataset)
         t = n // 10
         train_data, val_data = random_split(dataset, [n - t, t])
-        print('[LOG] device:', device, 'data loaded.')
         
         ## Trainer
         trainer = SFTTrainer(
@@ -101,7 +93,7 @@ def main(args):
     
             args=SFTConfig(
                 max_length=None,
-                dataloader_num_workers=4,
+                dataloader_num_workers=args.num_workers,
                 assistant_only_loss=True,
 
                 ddp_find_unused_parameters=False,
@@ -134,7 +126,6 @@ def main(args):
                 report_to="wandb",
             ),
         )
-        print('[LOG] device:', device, 'trainer config.')
         trainer.train()
 
     ## Evaluate
@@ -144,15 +135,14 @@ def main(args):
         test_data = FakeClueChatDataset(
             args.data_path, 
             split='test',
-            conversational=False#, max_num_samples=100
+            conversational=False,
+            max_image_size=512
         )
         test_loader = DataLoader(
             test_data, 
             collate_fn=TestDataCollator(tokenizer), 
-            batch_size=args.batch_size, num_workers=4, shuffle=False
+            batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False
         )
-        model, test_loader = accelerator.prepare(model, test_loader)
-        model = accelerator.unwrap_model(model)
         
         reasons = []
         predictions = []
@@ -160,42 +150,38 @@ def main(args):
         gt_labels = []
         for (batch, gt_r, gt_l) in tqdm(test_loader):
             pred_reasons, pred_answers, _ = run_batch(
-                model, tokenizer, batch.to(device), max_new_tokens=512, temperature=0.1
+                model, tokenizer, batch.to('cuda'), max_new_tokens=512, temperature=0.1
             )
             reasons += pred_reasons
             predictions += pred_answers
             gt_reasons += gt_r
             gt_labels += gt_l
             
+        model_predictions_df = pd.DataFrame({
+            "reasons": reasons,
+            "predictions": predictions,
+            "gt_reasons" : gt_reasons,
+            "gt_labels" : gt_labels
+        })
         
-        # Gather predictions from all processes
-        accelerator.wait_for_everyone()
-        reasons = accelerator.gather_for_metrics(reasons, use_gather_object=True)
-        predictions = accelerator.gather_for_metrics(predictions, use_gather_object=True)
-        gt_reasons = accelerator.gather_for_metrics(gt_reasons, use_gather_object=True)
-        gt_labels = accelerator.gather_for_metrics(gt_labels, use_gather_object=True)
-
-        if accelerator.is_main_process:
-            model_predictions_df = pd.DataFrame({
-                "reasons": reasons,
-                "predictions": predictions,
-                "gt_reasons" : gt_reasons,
-                "gt_labels" : gt_labels
-            }).drop_duplicates(['gt_reasons'])
-            acc = accuracy_score(gt_labels, predictions) * 100
-            f1 = f1_score(gt_labels, predictions, average='macro').item() * 100
-            rouge_l = rouge_score(
-                reasons, 
-                gt_reasons, 
-                use_stemmer=True
-            )['rougeL_fmeasure'].item() * 100
-            print('Data size:', len(test_data), ' preds size:', model_predictions_df.shape[0])
-            print('Accuracy:', acc, '  F1:', f1, 'ROUGE-L:', rouge_l)
-            model_predictions_df.to_csv(
-                args.save_dir +\
-                f"model_predictions-acc={round(acc, 2)}-f1={round(f1, 2)}-rougeL={round(rouge_l, 2)}.csv",
-                index=False
-            )
+        acc = accuracy_score(gt_labels, predictions) * 100
+        f1 = f1_score(gt_labels, predictions, average='macro').item() * 100
+        rouge_l = rouge_score(
+            reasons, 
+            gt_reasons, 
+            use_stemmer=True
+        )['rougeL_fmeasure'].item() * 100
+        
+        print('Accuracy:', acc, '  F1:', f1, 'ROUGE-L:', rouge_l)
+        
+        wandb.log({'test-f1': f1})
+        wandb.log({'test-acc': acc})
+        wandb.log({'test-ROUGE-L': rouge_l})
+        
+        model_predictions_df.to_csv(
+            args.save_dir + "model_predictions.csv",
+            index=False
+        )
         
 
     # model.save_pretrained(args.save_dir)  # Local saving
