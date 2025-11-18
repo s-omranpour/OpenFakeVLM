@@ -3,31 +3,52 @@ import torch
 
 REASONING_START = "<REASONING>"
 REASONING_END = "</REASONING>"
-SOLUTION_START = "<SOLUTION>"
-SOLUTION_END = "</SOLUTION>"
+DESCRIPTION_START = "<DESCRIPTION>"
+DESCRIPTION_END = "</DESCRIPTION>"
+ANSWER_START = "<ANSWER>"
+ANSWER_END = "</ANSWER>"
 
 
-def process_answer(raw_answer: str):
+
+def process_reasoning_answer(raw_output: str):
     reasoning_pattern = f'{REASONING_START}(.*?){REASONING_END}'
-    answer_pattern = f'{SOLUTION_START}(.*?){SOLUTION_END}'
+    answer_pattern = f'{ANSWER_START}(.*?){ANSWER_END}'
     
 
-    reasoning = re.findall(reasoning_pattern, raw_answer, re.DOTALL)
+    reasoning = re.findall(reasoning_pattern, raw_output, re.DOTALL)
     if len(reasoning) > 0:
         reasoning = reasoning[0].strip()
     else:
         reasoning = ''
         
-    answer = re.findall(answer_pattern, raw_answer, re.DOTALL)
+    answer = re.findall(answer_pattern, raw_output, re.DOTALL)
     if len(answer) > 0:
         answer = answer[0].strip()
     else:
         answer = ''
     return reasoning, answer
+
+def process_captioning_answer(raw_output: str):
+    captioning_pattern = f'{DESCRIPTION_START}(.*?){DESCRIPTION_END}'
+    answer_pattern = f'{ANSWER_START}(.*?){ANSWER_END}'
     
+
+    caption = re.findall(captioning_pattern, raw_output, re.DOTALL)
+    if len(caption) > 0:
+        caption = caption[0].strip()
+    else:
+        caption = ''
+        
+    answer = re.findall(answer_pattern, raw_output, re.DOTALL)
+    if len(answer) > 0:
+        answer = answer[0].strip()
+    else:
+        answer = ''
+    return caption, answer
 
 def run_batch(
     model, tokenizer, batch,
+    processor_func,
     max_new_tokens = 512, 
     temperature = 0.7,
     top_p = 0.8,
@@ -47,10 +68,9 @@ def run_batch(
         skip_special_tokens=True,
         clean_up_tokenization_spaces=False
     )
-    processed_output = list(map(process_answer, raw_output))
-    reasons = [po[0] for po in processed_output]
-    answers = [po[1] for po in processed_output]
-    return reasons, answers, raw_output
+    processed_output = [processor_func(ro) for ro in raw_output]
+    processed_output = list(zip(*processed_output))
+    return processed_output, raw_output
 
 
 
