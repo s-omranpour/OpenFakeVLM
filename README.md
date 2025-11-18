@@ -1,8 +1,8 @@
 # OpenFakeVLM
 
+## Results
 <details>
-
-<summary>Results on OpenFake</summary>
+<summary>OpenFake</summary>
 
 ### **Qwen3-VL-2B-instruct (Zero-shot)**
 - **Accuracy:** 61.46    
@@ -16,11 +16,10 @@
 </details>
 
 <details>
-
 <summary>Results on FakeClue</summary>
 
 ### **Qwen3-VL-2B-instruct (Zero-shot)**
-- **Accuracy:** 56.67. 
+- **Accuracy:** 56.67  
 - **F1:** 22.66  
 - **ROUGE-L:** 19.53
 
