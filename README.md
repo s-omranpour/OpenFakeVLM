@@ -1,5 +1,12 @@
 # OpenFakeVLM
 
+## Template 
+Prompt:
+```
+Does the image look real/fake?
+Also first provide your reasons between <REASONING> and </REASONING> and then your final answer between <SOLUTION> and (put either real/fake) </SOLUTION>.
+```
+
 ## Results
 
 ### **Qwen3-VL-2B-instruct (Zero-shot)**
