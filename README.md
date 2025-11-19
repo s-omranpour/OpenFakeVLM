@@ -23,12 +23,9 @@
 - **F1:** 29.23  
 
 ### **Qwen3-VL-2B-instruct (SFT)**
-- **Accuracy:** 97.73  
-- **F1:** 97.42  
-
-### **Qwen3-VL-8B-instruct (Zero-shot)**
-- **Accuracy:** 56.26  
-- **F1:** 37.29   
+- **Accuracy:** 96.73  
+- **F1:** 96.42  
+   
 
 
 </details>
